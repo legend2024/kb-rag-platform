@@ -1,0 +1,58 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: kb-rag-platform
+  datasource:
+    url: jdbc:postgresql://localhost:55432/kb
+    username: kb
+    password: kb123456
+    driver-class-name: org.postgresql.Driver
+  ai:
+    openai:
+      # 默认走阿里云百炼的 OpenAI 兼容端点，可换成 DeepSeek / 智谱 / 自建 vLLM
+      base-url: ${AI_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
+      # 两个环境变量名都支持：AI_API_KEY 优先，其次 DASHSCOPE_API_KEY
+      api-key: ${AI_API_KEY:${DASHSCOPE_API_KEY:}}
+      chat:
+        options:
+          model: ${AI_CHAT_MODEL:qwen3.8-max}
+          temperature: 0.3
+      embedding:
+        options:
+          model: ${AI_EMBED_MODEL:text-embedding-v4}
+          dimensions: 1024
+    vectorstore:
+      pgvector:
+        table-name: kb_vector_store
+        dimensions: 1024
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        initialize-schema: true
+
+kb:
+  rag:
+    chunk:
+      max-chars: 600
+      overlap-chars: 120
+      prepend-heading: true
+    retrieve:
+      vector-top-k: 24
+      bm25-top-k: 24
+      final-top-k: 6
+      rrf-k: 60
+      rerank-candidates: 12
+    rerank:
+      enabled: true
+      # dashscope = 专用重排模型（便宜、一次返回全部分数）；llm = 用 chat 模型逐个打分（慢且贵，仅作对照）
+      provider: ${AI_RERANK_PROVIDER:dashscope}
+      model: ${AI_RERANK_MODEL:qwen3.7-text-rerank}
+      base-url: https://dashscope.aliyuncs.com
+      path: /api/v1/services/rerank/text-rerank/text-rerank
+      api-key: ${AI_API_KEY:${DASHSCOPE_API_KEY:}}
+      timeout-ms: 3000
+
+logging:
+  level:
+    com.example.kb: DEBUG
